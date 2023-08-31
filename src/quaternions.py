@@ -278,53 +278,6 @@ class IIRFilter3D:
     def get_last_output(self):
         return [self.xf.get_last_output(), self.yf.get_last_output(), self.zf.get_last_output()]
 
-def get_opt_q(dir_in, date, spd_thresh=7, min_gps_idx=-1):
-    """
-    Caclulates the quaterion that rotates the acceleration data to "best" match the GPS data. This is a measure of the device orientation relative to the vehicles axes
-    """
-    dir = dir_in + ('/' if dir_in[-1] !='/' else '')
-    accel=read_csv(dir + 'accel.' + date + '.csv')
-    b17,a17=signal.butter(4, 1/17, 'low', analog=False);
-    t_accel = accel[:,0]
-    faccel=np.zeros(accel.shape)
-    faccel[:,0] = accel[:,0] # copy over time
-    for n in range(1,4):
-        faccel[:,n]=ba_filter(b17,a17, accel[:,n])
-
-    gps=read_csv(dir+'gps.'+date+'.csv') # ms,lat,lng,kmph,track,satellites,alt
-    gpsAccel = accels_from_gpss(gps)
-    M=np.zeros((4,4))
-    num_pts_used = 0
-    for n in range(0,gpsAccel.shape[0]):
-        a_idx = np.argmax(t_accel > gpsAccel[n,0]) - 1
-        a = faccel[a_idx,1:]
-        ga = np.append(gpsAccel[n,1:], 9.81) # Assume z acceleration is as if vehicle is on a flat road (no slope, nor change in altitude).
-        spd = (gps[n,3] + gps[n+1,3])/2
-        if (spd < spd_thresh or n < 6 or np.isnan(a).any() or np.isnan(ga).any()):
-            continue
-        P=product_matrix_right(0,a[0],a[1],a[2])
-        Q=product_matrix_left(0,ga[0],ga[1],ga[2])
-        M = M + P.transpose() @ Q
-        num_pts_used = num_pts_used + 1
-    vals, vecs =np.linalg.eig(M)
-    print("num_pts_used=",num_pts_used)
-    i=np.argmax(vals)
-    print("eigenvalues=", vals, ", argmax=",i)
-    #print(vecs)
-    q=vecs[:,i]
-    print("q=",q, "angle=", np.arccos(q[0]) * 180/math.pi, "degrees")
-    return q
-
-def get_opt_q_for_v1_to_v2(a,ga):
-    P=product_matrix_right(0,a[0],a[1],a[2])
-    Q=product_matrix_left(0,ga[0],ga[1],ga[2])
-    M=P.transpose() @ Q
-    vals, vecs =np.linalg.eig(M)
-    i = np.argmax(vals)
-    q = vecs[:,i]
-    print(M)
-    print("eigenvalues=", vals, ", argmax=",i, ", q=",q, ", angle=", np.arccos(q[0]) * 180/math.pi, "degrees")
-    return q,M
 
 class FilteredOptQ:
     def __init__(self, b, a):
@@ -347,4 +300,67 @@ class FilteredOptQ:
 
 def degrees(q1,q2):
     return np.arccos(q1 @ q2) * 180 / math.pi
+
+def get_opt_q_for_v1_to_v2(a,ga):
+    P=product_matrix_right(0,a[0],a[1],a[2])
+    Q=product_matrix_left(0,ga[0],ga[1],ga[2])
+    M=P.transpose() @ Q
+    vals, vecs =np.linalg.eig(M)
+    i = np.argmax(vals)
+    q = vecs[:,i]
+    print(M)
+    print("eigenvalues=", vals, ", argmax=",i, ", q=",q, ", angle=", np.arccos(q[0]) * 180/math.pi, "degrees")
+    return q,M
+
+def time_slice(x, min_sec, max_sec):
+    idxs = np.where((min_sec*1000 <= x[:,0]) & (x[:,0] < max_sec*1000))[0]
+    return idxs
+    #return slice(start_stop)
+
+def set_fixed_prec_format(n=2):
+    format_str = f"%5.{n}f"
+    float_formatter = lambda x: format_str % x
+    np.set_printoptions(formatter={'float_kind':float_formatter})
+
+def get_filtered_accel_gps_file(dir_in, date):
+    dir = dir_in + ('/' if dir_in[-1] !='/' else '')
+    accel=read_csv(dir + 'accel.' + date + '.csv')
+    b17,a17=signal.butter(4, 1/17, 'low', analog=False);
+    faccel=np.zeros(accel.shape)
+    faccel[:,0] = accel[:,0] # copy over time
+    for n in range(1,4):
+        faccel[:,n]=ba_filter(b17,a17, accel[:,n])
+    gps=read_csv(dir+'gps.'+date+'.csv') # ms,lat,lng,kmph,track,satellites,alt
+    return faccel,gps
+
+def get_opt_q_file(dir_in, date, spd_thresh=7):
+    """
+    Caclulates the quaterion that rotates the acceleration data to "best" match the GPS data. This is a measure of the device orientation relative to the vehicles axes
+    """
+    faccel,gps = get_filtered_accel_gps_file(dir_in, date)
+    return get_opt_q(faccel, gps, spd_thresh)
+
+def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False):
+    t_accel = faccel[:,0]
+    gpsAccel = accels_from_gpss(gps)
+    M=np.zeros((4,4))
+    num_pts_used = 0
+    for n in range(0,gpsAccel.shape[0]):
+        a_idx = np.argmax(t_accel > gpsAccel[n,0]) - 1
+        a = faccel[a_idx,1:]
+        ga = np.append(gpsAccel[n,1:], 9.81) # Assume z acceleration is as if vehicle is on a flat road (no slope, nor change in altitude).
+        spd = (gps[n,3] + gps[n+1,3])/2
+        if (spd < spd_thresh or np.isnan(a).any() or np.isnan(ga).any()):
+            continue
+        P=product_matrix_right(0,a[0],a[1],a[2])
+        Q=product_matrix_left(0,ga[0],ga[1],ga[2])
+        M = M + P.transpose() @ Q
+        num_pts_used = num_pts_used + 1
+    vals, vecs =np.linalg.eig(M)
+    i=np.argmax(vals)
+    q=vecs[:,i]
+    if (print_diag):
+        print("eigenvalues=", vals, ", argmax=",i, ", num_pts_used=", num_pts_used)
+        print("q=",q, "angle=", np.arccos(q[0]) * 180/math.pi, "degrees")
+    return q
 
