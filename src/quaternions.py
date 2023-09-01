@@ -298,8 +298,11 @@ class FilteredOptQ:
         #print(self.ga_filt.get_last_output())
         return get_opt_q_for_v1_to_v2(self.a_filt.get_last_output(), self.ga_filt.get_last_output())
 
-def degrees(q1,q2):
-    return np.arccos(q1 @ q2) * 180 / math.pi
+def dist_degrees(q1,q2):
+    d = np.arccos(q1 @ q2) * 180 / math.pi
+    if (abs(d) > 90):
+        d = dist_degrees(-q1,q2) # -q rotates the same as q because (-q)p(-q)* = qpq* (the rotation operator)
+    return d
 
 def get_opt_q_for_v1_to_v2(a,ga):
     P=product_matrix_right(0,a[0],a[1],a[2])
