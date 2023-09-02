@@ -1,19 +1,28 @@
 # quat-orient
 
-Measuring the acceleration (3 axis vector) of a vehicle is useful a variety of purposes. The one I am most familiar with is driver behavior. We can use a smart phone - or any device with an accelerometer in it - mounted in the vehicle, to measure the acceleration. The problem is that in general we don't know the orientation of the mounted device (accelerometer), and therefore don't know the direction of the (accelerometer's) acceleration vector, relative to the vehicle. This project provides an algorithm to estimate the orientation of the device relative to the vehicle, using GPS and accelerometer data.
+Here's the problem: You've got accelerometer data for a vehicle but you don't know this data relates to the vehicles acceleration directions (forwards/backwards and left/right cornering directions).
+Here's a solution: Use GPS data and a bit of math with qaternions.
 
-In this project I use the following definition of the vehicle axes: x points forwards (the direction the driver is facing), y points to the left, and z points up vertically.
+The goal of this project is to give an algorithm that solves this problem. The algorithm requires accelerometer and GPS data while the vehicle is moving - a training phase if you like. But it converges pretty quickly so that a reasonable estimate can be obtained within 10's of seconds of motion with braking and/or cornering. It's not a polished algorithm, and the python source probably isn't useable as is. But I think this is a good solution and a good base on which to make something more polished. The python code is a way of documenting the algorithm and for testing it.
 
-This repository contains python code and test data to determine the "best" quaternion that represents the relative orientation of the device with respect to the vehicle. Equivalently, it finds the quaternion that rotates the accelerometer vector output by the accelerometer to a vector that best matches the acceleration vector of the vehicle (with axes as defined above).
+If we could mount the accelerometer so that its axes matched the vehicle there would be no problem. And I suspect that this is the best solution if you are a vehicle manufacturer providing an in-build accelerometer. But if you can't control the mounting then this algorithm is one solution to the problem.
+
+The test data was generated with an Android mobile phone mounted with Blu Tak :D to the dash in a car. The test data was generated using known orientations so that the algorithm can be verified. But it will work with an arbitrary fixed mounting orientation.
+
+This repository contains python code and test data to determine the "best" quaternion that rotates the accelerometer vector, output by the accelerometer, to the acceleration vector of the vehicle (with axes as defined above). More generally it describes a method to find the quaternion that gives the "best" rotation to match a set of input and output (3-dimensional) vectors.
+
+# Vehicle axes
+
+I use the following definition of the vehicle axes: x points forwards (the direction the driver is facing), y points to the left, and z points up vertically. (It is a right hand system).
 
 # How does it work
 
-See the get_opt_q function in src/quaternions.py. The math for solving the least squares registration problem, given by Yan-Bin Jia (see References) is the same for finding the quaternion rotation that best rotates a set of input vectors (accelermeter output vectors) to match a set of output vectors (the vehicles accelerometer vectors). That is the optimum quaternion is the eigenvector, corresponding to the largest eigenvalue, of a matrix formed from suitably combined the input/output data.
+The math for solving the least squares registration problem, given by Yan-Bin Jia (see References) is the same for finding the quaternion rotation that best rotates a set of input vectors (accelermeter output vectors) to match a set of output vectors (the vehicles accelerometer vectors). That is the optimum quaternion is the eigenvector, corresponding to the largest eigenvalue, of a matrix formed from suitably combined input/output data. See the get_opt_q function in src/quaternions.py. 
 
 # How to use it.
-Read the data/README.md file for a description of the test data.
+There are two trips of test data: one with date/time 2020-10-15-21 and one with 2020-10-15-22. The data/README.md file gives more information but you don't have to read it yet.
 
-Run python from the command line in the src directory. Then execute:
+Run python from the command line in the src directory. Then execute the following for the first trip:
 
 ```
 import quaternions as qu
@@ -28,9 +37,9 @@ q1
 qu.dist_degrees(q1,[1,0,0,0])
 1.618
 ```
-This quaternion is close to the identity quaternion [1,0,0,0], which effects no change (rotation). q1 rotates the data only by 2*1.618... ~= 3.2 degrees. As per data/README.md the phone was mounted, according to my eyechrometer, with this identity orientation - that is so that the phone accelerometer axes match the vehicle axes.
+This quaternion is close to the identity quaternion [1,0,0,0], which effects no change (no rotation). As per data/README.md the phone was mounted on this first trip with this identity orientation (according to my eyechrometer) - that is so the phone accelerometer axes are close to the vehicle axes. And the estimated quaternion q1, rotates the data only by 2*1.618... ~= 3.2 degrees - which is indeed close to the identity.
 
-Running the same function for the 2020-10-15-22 data will result in the qaternion
+Running the same function for the second trip (2020-10-15-22) data will result in the qaternion
 
 ```
 qu.set_fixed_prec_format(4)
@@ -40,9 +49,9 @@ array([-0.0039, 0.0054, 0.0043, 1.0000])
 179.5519155557356
 ```
 
-This qaternion effects an approx 180 degree rotation about the z-axis (note that quaternion rotation effects a rotation of double the angle defined by it's real term). And on this return trip this was how I (re) mounted the phone, using my eyecrometer.
+This qaternion effects an approx 180 degree rotation about the z-axis (note that quaternion rotation effects a rotation of double the angle defined by it's real term). And on this return trip this was how I (re) mounted the phone, again according to my eyecrometer.
 
-This algorithm converges pretty quickly. After 10 seconds of data (of speed > 7 kmph) it's quite a reasonable estimate as shown by:
+The algorithm converges pretty quickly. After 10 seconds of data (of speed > 7 kmph) it's quite a reasonable estimate as shown by:
 ```
 import numpy as np
 import quaternions as qu
@@ -55,17 +64,23 @@ for n in np.arange(50,341,10):
 
 ```
 
-We can also calculate the optimum quaternion for data localized in time, and see how it varies over time. - e.g. a running average of the data (of the matrices, but not the accel data). This can be used to e.g. detect if the device is fixed to the vehicle or not (e.g. "rolling around"). If it's not fixed, the orientation / optimum quaternion will likely change significantly over time.
+We can also calculate the optimum quaternion for data localized in time, and see how it varies over time. - e.g. a running average of the data (of the matrices, but not the accel data). This can be used to e.g. detect if the device is fixed to the vehicle or not (e.g. "rolling around on the floor"). If the device is not fixed, the orientation / optimum quaternion will likely change significantly over time.
 
-# What are quaternions
+# What are quaternions ?
 
-I don't know quaternions well enough to give a good tutorial. So these notes are for mainly for me. I learned about quaternions from the references in the References section.
+Quaternions are hard to understand and I don't know them well enough to give a (good) tutorial. So these notes are for mainly for me. I learned about quaternions from the references in the References section.
 
-I like Ken Shoemakes (see References) description where he says there are basically several different ways to define Quaternions. The main ways are: Hamilton's way as extended complex numbers w +ix, jy + kz (with multiplication distributive over addition, and i^2 = j^2 = k^2 = ijk = -1); the more abstract way as quadruples of real numbers (w, x, y, z), with addition and multiplication suitably defined; or the similar more compact way as a 2-tuple (w, v) with w a scalar (real number) and v a 3 component vector (part). Shoemake lists definitions and facts. The only think I don't like is that he puts the vector part first in the 2-tuple, but Wikipedia and other references I found put the vector part second. I stick with the Wikipedia convention.
+I like Ken Shoemakes (see References) description where he says there are basically several different (equivalent) ways to define Quaternions. The main ways are: 
+
+1. Hamilton's way as extended complex numbers w +ix, jy + kz (with multiplication distributive over addition, and i^2 = j^2 = k^2 = ijk = -1)
+2. The more abstract way as quadruples of real numbers (w, x, y, z) - a 4D vector - with addition and multiplication suitably defined
+3. Like 2. but a more compact 2-tuple (w, v) with w a scalar (real number) and v a 3 component vector (part).
+
+Shoemake lists definitions and facts. The only think I don't like is that he puts the vector part first in the 2-tuple, but Wikipedia and other references I found put the vector part second. I stick with the Wikipedia convention. He also gives the "rotation theorem": Given a unit quaternion q (and its conjugate q*), the multiplication qvq* rotates vector v in 3D by angle = 2*arccos(w), around the axis given by the vector part of q (Note v in this equation is a quaternion, with 0 real part).
 
 # References
 
-Quaternions are are hard to understand (unless you are a mathematician) - that is they take time and effort to learn. There are many references on the Internet on Quaternions. I collect here the ones that I used.
+Quaternions are are hard to understand (unless you are a mathematician) - they take time and effort to learn. There are many references on the Internet on Quaternions. I collect here the ones that I used.
 
 I started with some intuitive explanations / visualizations at:
 
