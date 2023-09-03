@@ -76,7 +76,15 @@ I like Ken Shoemakes (see References) description where he says there are basica
 2. The more abstract way as quadruples of real numbers (w, x, y, z) - a 4D vector - with addition and multiplication suitably defined
 3. Like 2. but a more compact 2-tuple (w, v) with w a scalar (real number) and v a 3 component vector (part).
 
-Shoemake lists definitions and facts. The only think I don't like is that he puts the vector part first in the 2-tuple, but Wikipedia and other references I found put the vector part second. I stick with the Wikipedia convention. He also gives the "rotation theorem": Given a unit quaternion q (and its conjugate q*), the multiplication qvq* rotates vector v in 3D by angle = 2*arccos(w), around the axis given by the vector part of q (Note v in this equation is a quaternion, with 0 real part).
+Shoemake lists definitions and facts. The only thing I don't like is that he puts the vector part first in the 2-tuple, but Wikipedia and other references I found put the vector part second. I stick with the Wikipedia convention. He also gives the "rotation theorem": Given a unit quaternion q (and its conjugate q*), the multiplication qvq* rotates vector v in 3D by angle = 2*arccos(w), around the axis given by the vector part of q (Note v in this equation is a quaternion, with 0 real part).
+
+# FAQ
+
+Q. Why not just use GPS data, since you can (and do here) calculate forwards/backwards and cornering acceleration from it ?
+A. Because gravity "leakage" into this acceleration is signifiant. Gravity ~= 9.81 m/s^2 is a massive accereration relative to usual vehiclular accelerations. And sine(theta) has maximum slope around 0 angle. So therefore gravity * sin(road slope) - the "leakage" is relatively large. For example, in the test data, the slope on Ayr street adds nearly 2 m/s^2 braking acceleration. E.g. at constant speed driving down Ayr St, the vehicle experiences a constant near 2 m/s^2 braking accceleration (force). I've braked and briefly slid at the bottom of Ayr Street because of this slope/braking acceleration (exacerbated because it was wet) without hitting the brakes hard. This gravity leakage is also why camber on corners is so important - or so bad for an off camber corner.
+
+Q. How to contribute?
+A. Please review and provide feedback. You could also collect more test data - e.g. accerlerometer and GPS data (with e.g. AndroSensor app). You do need to note the orientation of the device so we can check the results. If you write code the algorithm would be more useful in C++, Kotlin etc, for a real-time variant (that is calculate orientation on the fly as data comes in). That's not a trivial task BTW so you might want to do this under your own project.
 
 # References
 
