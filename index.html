@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>quat-orient</title>
+<meta name="generator" content="Jekyll v3.9.3" />
+<meta property="og:title" content="quat-orient" />
+<meta property="og:locale" content="en_US" />
+<link rel="canonical" href="https://jimregiandrew.github.io/quat-orient/" />
+<meta property="og:url" content="https://jimregiandrew.github.io/quat-orient/" />
+<meta property="og:site_name" content="quat-orient" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="quat-orient" />
+<meta name="google-site-verification" content="S1EhPywLm5ifbt11hDCvz65U-DsynpxqsZWdwDCtK14" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","headline":"quat-orient","name":"quat-orient","url":"https://jimregiandrew.github.io/quat-orient/"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/quat-orient/assets/css/style.css?v=fee091554ea6d581d22641970946d5c31073f1ac">
+    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+
+<!-- Setup Google Analytics -->
+
+
+
+<!-- You can set your favicon here -->
+<!-- link rel="shortcut icon" type="image/x-icon" href="/quat-orient/favicon.ico" -->
+
+<!-- end custom head snippets -->
+
+  </head>
+  <body>
+    <div class="container-lg px-3 my-5 markdown-body">
+      
+
+      <h1 id="quat-orient">quat-orient</h1>
+
+<p>Here’s the problem: You’ve got accelerometer data for a vehicle but you don’t know this data relates to the vehicles acceleration directions (forwards/backwards and left/right cornering directions).
+Here’s a solution: Use GPS data and a bit of math with qaternions.</p>
+
+<p>The goal of this project is to give an algorithm that solves this problem. The algorithm requires accelerometer and GPS data while the vehicle is moving - a training phase if you like. But it converges pretty quickly so that a reasonable estimate can be obtained within 10’s of seconds of motion with braking and/or cornering. It’s not a polished algorithm, and the python source probably isn’t useable as is. But I think this is a good solution and a good base on which to make something more polished. The python code is a way of documenting the algorithm and for testing it.</p>
+
+<p>If we could mount the accelerometer so that its axes matched the vehicle there would be no problem. And I suspect that this is the best solution if you are a vehicle manufacturer providing an in-build accelerometer. But if you can’t control the mounting then this algorithm is one solution to the problem.</p>
+
+<p>The test data was generated with an Android mobile phone mounted with Blu Tak :D to the dash in a car. The test data was generated using known orientations so that the algorithm can be verified. But it will work with an arbitrary fixed mounting orientation.</p>
+
+<p>This repository contains python code and test data to determine the “best” quaternion that rotates the accelerometer vector, output by the accelerometer, to the acceleration vector of the vehicle (with axes as defined above). More generally it describes a method to find the quaternion that gives the “best” rotation to match a set of input and output (3-dimensional) vectors.</p>
+
+<h1 id="vehicle-axes">Vehicle axes</h1>
+
+<p>I use the following definition of the vehicle axes: x points forwards (the direction the driver is facing), y points to the left, and z points up vertically. (It is a right hand system).</p>
+
+<h1 id="how-does-it-work">How does it work</h1>
+
+<p>The math for solving the least squares registration problem, given by Yan-Bin Jia (see References) is the same for finding the quaternion rotation that best rotates a set of input vectors (accelermeter output vectors) to match a set of output vectors (the vehicles accelerometer vectors). That is the optimum quaternion is the eigenvector, corresponding to the largest eigenvalue, of a matrix formed from suitably combined input/output data. See the get_opt_q function in src/quaternions.py.</p>
+
+<h1 id="how-to-use-it">How to use it.</h1>
+<p>There are two trips of test data: one with date/time 2020-10-15-21 and one with 2020-10-15-22. The data/README.md file gives more information but you don’t have to read it yet.</p>
+
+<p>There are a few python packages to install - and I’ve used python3. I used a virtual environment and the following requirements file e.g. From the src directory:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip3 install -r requirements.txt
+</code></pre></div></div>
+
+<p>Once these are installed run python from the command line in the src directory. Then execute the following for the first trip:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>import quaternions as qu
+q1=qu.get_opt_q_file('../data','2020-10-15-21');
+</code></pre></div></div>
+
+<p>Then you should see something like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>q1
+[ 0.99960554 -0.01820031  0.0169176  -0.01308816]
+qu.dist_degrees(q1,[1,0,0,0])
+1.618
+</code></pre></div></div>
+<p>This quaternion is close to the identity quaternion [1,0,0,0], which effects no change (no rotation). As per data/README.md the phone was mounted on this first trip with this identity orientation (according to my eyechrometer) - that is so the phone accelerometer axes are close to the vehicle axes. And the estimated quaternion q1, rotates the data only by 2*1.618… ~= 3.2 degrees - which is indeed close to the identity.</p>
+
+<p>Running the same function for the second trip (2020-10-15-22) data will result in the qaternion</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>qu.set_fixed_prec_format(4)
+q2
+array([-0.0039, 0.0054, 0.0043, 1.0000])
+2*qu.dist_degrees(q2,[1,0,0,0])
+179.5519155557356
+</code></pre></div></div>
+
+<p>This qaternion effects an approx 180 degree rotation about the z-axis (note that quaternion rotation effects a rotation of double the angle defined by it’s real term). And on this return trip this was how I (re) mounted the phone, again according to my eyecrometer.</p>
+
+<p>The algorithm converges pretty quickly. After 10 seconds of data (of speed &gt; 7 kmph) it’s quite a reasonable estimate as shown by:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>import numpy as np
+import quaternions as qu
+faccel1,gps1 = qu.get_filtered_accel_gps_file('../data','2020-10-15-21')
+q1=qu.get_opt_q_file('../data','2020-10-15-21');
+for n in np.arange(50,341,10):
+    q=qu.get_opt_q(faccel1,gps1[qu.time_slice(gps1,0,n),:],spd_thresh=7)
+    d=2*qu.dist_degrees(q,q1)
+    print(f"{n} {d:.1f}")
+
+</code></pre></div></div>
+
+<p>We can also calculate the optimum quaternion for data localized in time, and see how it varies over time. - e.g. a running average of the data (of the matrices, but not the accel data). This can be used to e.g. detect if the device is fixed to the vehicle or not (e.g. “rolling around on the floor”). If the device is not fixed, the orientation / optimum quaternion will likely change significantly over time.</p>
+
+<h1 id="what-are-quaternions-">What are quaternions ?</h1>
+
+<p>Quaternions are hard to understand and I don’t know them well enough to give a (good) tutorial. So these notes are for mainly for me. I learned about quaternions from the references in the References section.</p>
+
+<p>I like Ken Shoemakes (see References) description where he says there are basically several different (equivalent) ways to define Quaternions. The main ways are:</p>
+
+<ol>
+  <li>Hamilton’s way as extended complex numbers w +ix, jy + kz (with multiplication distributive over addition, and i^2 = j^2 = k^2 = ijk = -1)</li>
+  <li>The more abstract way as quadruples of real numbers (w, x, y, z) - a 4D vector - with addition and multiplication suitably defined</li>
+  <li>Like 2. but a more compact 2-tuple (w, v) with w a scalar (real number) and v a 3 component vector (part).</li>
+</ol>
+
+<p>Shoemake lists definitions and facts. The only thing I don’t like is that he puts the vector part first in the 2-tuple, but Wikipedia and other references I found put the vector part second. I stick with the Wikipedia convention. He also gives the “rotation theorem”: Given a unit quaternion q (and its conjugate q<em>), the multiplication qvq</em> rotates vector v in 3D by angle = 2*arccos(w), around the axis given by the vector part of q (Note v in this equation is a quaternion, with 0 real part).</p>
+
+<h1 id="faq">FAQ</h1>
+
+<p>Q. Why not just use GPS data, since you can (and do here) calculate forwards/backwards and cornering acceleration from it ?
+A. Because gravity “leakage” into this acceleration is signifiant. Gravity ~= 9.81 m/s^2 is a massive accereration relative to usual vehiclular accelerations. And sine(theta) has maximum slope around 0 angle. So therefore gravity * sin(road slope) - the “leakage” is relatively large. For example, in the test data, the slope on Ayr street adds nearly 2 m/s^2 braking acceleration. E.g. at constant speed driving down Ayr St, the vehicle experiences a constant near 2 m/s^2 braking accceleration (force). I’ve braked and briefly slid at the bottom of Ayr Street because of this slope/braking acceleration (exacerbated because it was wet) without hitting the brakes hard. This gravity leakage is also why camber on corners is so important - or so bad for an off camber corner.</p>
+
+<p>Q. How to contribute?
+A. Please review and provide feedback. You could also collect more test data - e.g. accerlerometer and GPS data (with e.g. AndroSensor app). You do need to note the orientation of the device so we can check the results. If you write code the algorithm would be more useful in C++, Kotlin etc, for a real-time variant (that is calculate orientation on the fly as data comes in). That’s not a trivial task BTW so you might want to do this under your own project.</p>
+
+<h1 id="references">References</h1>
+
+<p>Quaternions are are hard to understand (unless you are a mathematician) - they take time and effort to learn. There are many references on the Internet on Quaternions. I collect here the ones that I used.</p>
+
+<p>I started with some intuitive explanations / visualizations at:</p>
+
+<ol>
+  <li>https://eater.net/quaternions</li>
+  <li>https://www.youtube.com/watch?v=d4EgbgTm0Bg&amp;t=1s</li>
+</ol>
+
+<p>But I never really groked it. I found I made more progress when I looked at papers that focused on quaternion algebra - basically the algebra is the same as for real (or complex) numbers <em>except</em> quaternion multiplication is not commutative: that is for quaternions p and q, pq != qp (in general).</p>
+
+<ol>
+  <li>http://www.faqs.org/faqs/graphics/algorithms-faq/ # comp.grahpics.algorithms FAQ. I got the Shoemake reference from here.</li>
+  <li>ftp://ftp.cis.upenn.edu/pub/graphics/shoemake/ # Ken Shoemake. I really like the list of facts. There are no derivations for the facts, but most aren’t too hard to show, using the definitions and quaternion algebra. Theorem 1 is good, but it took me a while to get/fill in the gaps in the proof.</li>
+  <li>“Quaternions and Rotations”, Yan-Bin Jia # There are a few versions on the Internet, presumably a base version that grew over time</li>
+  <li>https://math.stackexchange.com/questions/328117/how-does-one-derive-this-rotation-quaternion-formula # Helped me follow rotation theorem proofs.</li>
+  <li>https://en.wikipedia.org/wiki/Triple_product # Some dot and triple product formulae are needed for the proofs (usually a given in the proofs in the references).</li>
+  <li>https://en.wikipedia.org/wiki/Quaternion # Wikipedia - usually worth a read</li>
+  <li>“Some Notes on Unit Quaternions and Rotation”, Berthold K.P. Horn. https://ocw.mit.edu/courses/6-801-machine-vision-fall-2004/0a576904c8aa2add9d02df14ca85c019_quaternions.pdf # Good short summary paper. I liked the left and right product matrix description.</li>
+  <li>https://qr.ae/pyBRuT # Quora answer to the question “Why is the quaternion so hard to understand?” (I like this answer, if perhaps after the fact of a reasonable understanding).</li>
+</ol>
+
+
+
+      
+      <div class="footer border-top border-gray-light mt-5 pt-3 text-right text-gray">
+        This site is open source. <a href="https://github.com/jimregiandrew/quat-orient/edit/main/README.md">Improve this page</a>.
+      </div>
+      
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/anchor-js/4.1.0/anchor.min.js" integrity="sha256-lZaRhKri35AyJSypXXs4o6OPFTbTmUoltBbDCbdzegg=" crossorigin="anonymous"></script>
+    <script>anchors.add();</script>
+  </body>
+</html>
+
