@@ -41,8 +41,9 @@
 
       <h1 id="quat-orient">quat-orient</h1>
 
-<p>Here’s the problem: You’ve got accelerometer data for a vehicle but you don’t know this data relates to the vehicles acceleration directions (forwards/backwards and left/right cornering directions).
-Here’s a solution: Use GPS data and a bit of math with qaternions.</p>
+<p>Here’s the problem: You’ve got accelerometer data for a vehicle but you don’t know this data relates to the vehicles forwards/backwards direction and left/right cornering direction (the vehicle's frame of reference). Here’s a solution: Use GPS data and a bit of math with qaternions.</p>
+
+<p> Click <a href="https://github.com/jimregiandrew/quat-orient"> here </a> for the github repository </p>
 
 <p>The goal of this project is to give an algorithm that solves this problem. The algorithm requires accelerometer and GPS data while the vehicle is moving - a training phase if you like. But it converges pretty quickly so that a reasonable estimate can be obtained within 10’s of seconds of motion with braking and/or cornering. It’s not a polished algorithm, and the python source probably isn’t useable as is. But I think this is a good solution and a good base on which to make something more polished. The python code is a way of documenting the algorithm and for testing it.</p>
 
