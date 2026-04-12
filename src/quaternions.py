@@ -90,7 +90,7 @@ def speed_track_from_gps_csv(g):
     return np.array([t, speed, track])
 
 # Applies speed_track_from_gps_csv on every row of g, returning a speed track array (in m/s, radians)
-def speed_track_from_gpss_csv(g):
+def speed_track_from_gps_rows(g):
     out = []
     for n in range(0,g.shape[0]):
         out.append(speed_track_from_gps_csv(g[n,:]))
@@ -113,7 +113,7 @@ def accel_from_speed_tracks(sts):
     return np.array(out)
 
 def accels_from_gpss(g):
-    sts=speed_track_from_gpss_csv(g)
+    sts=speed_track_from_gps_rows(g)
     return accel_from_speed_tracks(sts)
 
 # Tidy up xi, yi initial conditions
@@ -273,7 +273,7 @@ class IIRFilter3D:
         self.zf = IIRFilter(b,a)
 
     def filter(self, v):
-        return [self.xf.filter(v[0]), self.yf.filter(v[0]), self.zf.filter(v[2])]
+        return [self.xf.filter(v[0]), self.yf.filter(v[1]), self.zf.filter(v[2])]
 
     def get_last_output(self):
         return [self.xf.get_last_output(), self.yf.get_last_output(), self.zf.get_last_output()]
@@ -299,7 +299,7 @@ class FilteredOptQ:
         return get_opt_q_for_v1_to_v2(self.a_filt.get_last_output(), self.ga_filt.get_last_output())
 
 def dist_degrees(q1,q2):
-    d = np.arccos(q1 @ q2) * 180 / math.pi
+    d = np.arccos(np.clip(q1 @ q2, -1.0, 1.0)) * 180 / math.pi
     if (abs(d) > 90):
         d = dist_degrees(-q1,q2) # -q rotates the same as q because (-q)p(-q)* = qpq* (the rotation operator)
     return d
@@ -308,7 +308,7 @@ def get_opt_q_for_v1_to_v2(a,ga):
     P=product_matrix_right(0,a[0],a[1],a[2])
     Q=product_matrix_left(0,ga[0],ga[1],ga[2])
     M=P.transpose() @ Q
-    vals, vecs =np.linalg.eig(M)
+    vals, vecs =np.linalg.eigh(M)
     i = np.argmax(vals)
     q = vecs[:,i]
     print(M)
@@ -359,7 +359,7 @@ def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False):
         Q=product_matrix_left(0,ga[0],ga[1],ga[2])
         M = M + P.transpose() @ Q
         num_pts_used = num_pts_used + 1
-    vals, vecs =np.linalg.eig(M)
+    vals, vecs =np.linalg.eigh(M)
     i=np.argmax(vals)
     q=vecs[:,i]
     if (print_diag):
