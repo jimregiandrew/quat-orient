@@ -71,6 +71,14 @@ for n in np.arange(50,341,10):
 
 We can also calculate the optimum quaternion for data localized in time, and see how it varies over time. - e.g. a running average of the data (of the matrices, but not the accel data). This can be used to e.g. detect if the device is fixed to the vehicle or not (e.g. "rolling around on the floor"). If the device is not fixed, the orientation / optimum quaternion will likely change significantly over time.
 
+# Testing
+
+A quick smoke test checks that the estimated quaternions for the two test trips give rotations close to 0 and 180 degrees respectively:
+
+```
+uv run python tests/test_orientation.py
+```
+
 # What are quaternions ?
 
 Quaternions are hard to understand and I don't know them well enough to give a (good) tutorial. So these notes are for mainly for me. I learned about quaternions from the references in the References section.
