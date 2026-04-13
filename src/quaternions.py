@@ -343,15 +343,46 @@ def get_opt_q_file(dir_in, date, spd_thresh=7):
     faccel,gps = get_filtered_accel_gps_file(dir_in, date)
     return get_opt_q(faccel, gps, spd_thresh)
 
-def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False):
+def slope_from_gps(gps, smooth_n=3):
+    """
+    Estimates road slope angle (radians) per GPS interval from altitude and speed.
+    Returns array of length len(gps)-1, where slope[n] is the slope between gps[n] and gps[n+1].
+    Positive = uphill in direction of travel.
+    """
+    dt = np.diff(gps[:,0]) / 1000.0
+    spd = gps[:,3] / 3.6  # km/h to m/s
+    horiz_dist = spd[:-1] * dt
+    # Smooth altitude to reduce GPS noise
+    alt = gps[:,6].copy()
+    if smooth_n > 1:
+        from scipy.ndimage import uniform_filter1d
+        alt = uniform_filter1d(alt, size=smooth_n, mode='nearest')
+    dalt = np.diff(alt)
+    slope = np.arctan2(dalt, horiz_dist)
+    # Zero out slope when stationary (horiz_dist ~ 0) to avoid noise
+    slope[horiz_dist < 0.5] = 0.0
+    return slope
+
+def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False, slope_comp=False):
+    """
+    slope_comp: experimental slope compensation using GPS altitude. Defaults to False
+    because GPS altitude (~1m accuracy at 1Hz) is too noisy — the correction noise
+    overwhelms the benefit. Needs a better altitude source (e.g. barometer-fused) to be useful.
+    """
     t_accel = faccel[:,0]
     gpsAccel = accels_from_gpss(gps)
+    slopes = slope_from_gps(gps) if slope_comp else None
+    g = 9.81
     M=np.zeros((4,4))
     num_pts_used = 0
     for n in range(0,gpsAccel.shape[0]):
         a_idx = np.argmax(t_accel > gpsAccel[n,0]) - 1
         a = faccel[a_idx,1:]
-        ga = np.append(gpsAccel[n,1:], 9.81) # Assume z acceleration is as if vehicle is on a flat road (no slope, nor change in altitude).
+        if slope_comp:
+            slope = slopes[n]
+            ga = np.array([gpsAccel[n,1] + g*math.sin(slope), gpsAccel[n,2], g*math.cos(slope)])
+        else:
+            ga = np.append(gpsAccel[n,1:], g)
         spd = (gps[n,3] + gps[n+1,3])/2
         if (spd < spd_thresh or np.isnan(a).any() or np.isnan(ga).any()):
             continue
