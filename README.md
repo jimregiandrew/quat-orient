@@ -22,15 +22,21 @@ The math for solving the least squares registration problem, given by Yan-Bin Ji
 # How to use it.
 There are two trips of test data: one with date/time 2020-10-15-21 and one with 2020-10-15-22. The data/README.md file gives more information but you don't have to read it yet.
 
-There are a few python packages to install - and I've used python3. I used a virtual environment and the following requirements file e.g. From the src directory:
+There are a few python packages to install - and I've used python3. I used a virtual environment and the requirements in the pyproject.toml file. E.g.from the project root directory I've used:
 ```
-pip3 install -r requirements.txt
+uv init
 ```
 
-Once these are installed run python from the command line in the src directory. Then execute the following for the first trip:
+Then run python from the command line. E.g.
 
 ```
-import quaternions as qu
+uv run python
+```
+
+ Then execute the following for the first trip:
+
+```
+import src.quaternions as qu
 q1=qu.get_opt_q_file('../data','2020-10-15-21');
 ```
 

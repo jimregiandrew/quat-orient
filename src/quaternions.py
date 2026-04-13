@@ -368,6 +368,9 @@ def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False, slope_comp=False):
     slope_comp: experimental slope compensation using GPS altitude. Defaults to False
     because GPS altitude (~1m accuracy at 1Hz) is too noisy — the correction noise
     overwhelms the benefit. Needs a better altitude source (e.g. barometer-fused) to be useful.
+    Note: only the x (sin) component of the correction matters in practice. The z (cos)
+    component changes negligibly at typical road slopes (cos is flat near 0), so a z-only
+    correction has no measurable effect.
     """
     t_accel = faccel[:,0]
     gpsAccel = accels_from_gpss(gps)
@@ -381,6 +384,7 @@ def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False, slope_comp=False):
         if slope_comp:
             slope = slopes[n]
             ga = np.array([gpsAccel[n,1] + g*math.sin(slope), gpsAccel[n,2], g*math.cos(slope)])
+            #ga = np.array([gpsAccel[n,1], gpsAccel[n,2], g*math.cos(slope)])
         else:
             ga = np.append(gpsAccel[n,1:], g)
         spd = (gps[n,3] + gps[n+1,3])/2
