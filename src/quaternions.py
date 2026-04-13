@@ -394,7 +394,7 @@ def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False, slope_comp=False):
         Q=product_matrix_left(0,ga[0],ga[1],ga[2])
         M = M + P.transpose() @ Q
         num_pts_used = num_pts_used + 1
-    vals, vecs =np.linalg.eigh(M)
+    vals, vecs = np.linalg.eigh(M)
     i=np.argmax(vals)
     q=vecs[:,i]
     if (print_diag):
