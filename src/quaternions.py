@@ -36,10 +36,10 @@ def rotate(q, p):
     """
     rotates 3D vector p using quaternion q
     """
-    P=product_matrix_left(q) # q left multiplies 
-    Q=product_matrix_right([q[0],-q[1],-q[2],-q[3]]) # q* right multiplies
-    #return Q @ P
-    out = Q @ P @ np.insert(p,0,0)
+    L=product_matrix_left(q) # q left multiplies
+    R=product_matrix_right([q[0],-q[1],-q[2],-q[3]]) # q* right multiplies
+    #return R @ L
+    out = R @ L @ np.insert(p,0,0)
     return out[1:]
 
 def rotate_timeseries(q,x):
@@ -308,9 +308,9 @@ def dist_degrees(q1,q2):
     return dist(q1,q2) * 180 / math.pi
 
 def get_opt_q_for_v1_to_v2(a,ga):
-    P=product_matrix_right(0,a[0],a[1],a[2])
-    Q=product_matrix_left(0,ga[0],ga[1],ga[2])
-    M=P.transpose() @ Q
+    R=product_matrix_right(0,a[0],a[1],a[2])
+    L=product_matrix_left(0,ga[0],ga[1],ga[2])
+    M=R.transpose() @ L
     vals, vecs =np.linalg.eigh(M)
     i = np.argmax(vals)
     q = vecs[:,i]
@@ -393,9 +393,9 @@ def get_opt_q(faccel, gps, spd_thresh=7, print_diag=False, slope_comp=False):
         spd = (gps[n,3] + gps[n+1,3])/2
         if (spd < spd_thresh or np.isnan(a).any() or np.isnan(ga).any()):
             continue
-        P=product_matrix_right(0,a[0],a[1],a[2])
-        Q=product_matrix_left(0,ga[0],ga[1],ga[2])
-        M = M + P.transpose() @ Q
+        R=product_matrix_right(0,a[0],a[1],a[2])
+        L=product_matrix_left(0,ga[0],ga[1],ga[2])
+        M = M + R.transpose() @ L
         num_pts_used = num_pts_used + 1
     vals, vecs = np.linalg.eigh(M)
     i=np.argmax(vals)

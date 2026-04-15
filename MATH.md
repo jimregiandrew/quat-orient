@@ -27,7 +27,7 @@ where $q^* = (w, -x, -y, -z)$ is the conjugate. Note that $q$ and $-q$ represent
 
 ## Product matrices
 
-Quaternion multiplication can be expressed as matrix-vector products. For quaternions $p$ and $r$:
+Quaternion multiplication can be expressed as matrix-vector products. In the equations below, we identify a quaternion $(w, x, y, z)$ with the 4-vector $\begin{pmatrix} w \\ x \\ y \\ z \end{pmatrix}$ — these are different mathematical objects (a quaternion vs. a vector in $\mathbb{R}^4$), but they share the same four components, and quaternion multiplication is linear in each argument, so the identification works. With this convention, for quaternions $p$ and $r$:
 
 The **left product matrix** $L(p)$ satisfies $p \cdot r = L(p)\, r$:
 
